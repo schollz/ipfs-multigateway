@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -66,6 +67,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handle(w http.ResponseWriter, r *http.Request) (err error) {
+	if len(r.URL.Path[1:]) < 10 {
+		fmt.Fprintf(w, "bad ipfs hash: "+r.URL.Path[1:])
+		return
+	}
 	ipfsContentHash := strings.TrimPrefix(r.URL.Path[1:], "ipfs/")
 	if !strings.Contains(ipfsContentHash, "/") {
 		http.Redirect(w, r, r.URL.Path+"/", 302)
