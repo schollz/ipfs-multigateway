@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -15,7 +16,7 @@ func main() {
 	var port string
 	var debug bool
 	flag.StringVar(&port, "port", "8085", "port to host on")
-	flag.BoolVar(&debug, "debug", false, "debug mode")
+	flag.BoolVar(&debug, "debug", true, "debug mode")
 	flag.Parse()
 
 	// toggle debug mode
@@ -47,6 +48,7 @@ var gateways = []string{
 	"https://cloudflare-ipfs.com/ipfs/",
 	"https://ipfs.netw0rk.io/ipfs/",
 	"https://gateway.swedneck.xyz/ipfs/",
+	"https://ipfs.infura.io/ipfs/",
 }
 
 func copyHeader(dst, src http.Header) {
@@ -86,6 +88,9 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 
 	for i := 0; i < len(gateways); i++ {
 		res := <-result
+		if res == nil {
+			continue
+		}
 		// log.Println(res)
 		if res.StatusCode != http.StatusOK && res.Body != nil {
 			continue
@@ -113,8 +118,12 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 	return nil
 }
 
-func cancelableRequest(result chan *http.Response, cancel chan struct{}, url string) {
-	req, _ := http.NewRequest("GET", url, nil)
+func cancelableRequest(result chan *http.Response, cancel chan struct{}, urlToGet string) {
+	u, err := url.Parse(urlToGet)
+	if err != nil {
+		panic(err)
+	}
+	req, _ := http.NewRequest("GET", urlToGet, nil)
 	tr := &http.Transport{} // TODO: copy defaults from http.DefaultTransport
 	client := &http.Client{
 		Transport: tr,
@@ -123,21 +132,18 @@ func cancelableRequest(result chan *http.Response, cancel chan struct{}, url str
 	c := make(chan *http.Response, 1)
 	go func() {
 		resp, _ := client.Do(req)
-		// if err != nil {
-		// 	log.Println(err)
-		// }
 		c <- resp
 	}()
 
 	for {
 		select {
 		case <-cancel:
-			// log.Println("Cancelling request for " + url)
+			log.Debugf("Cancelling request for %s", u.Host)
 			tr.CancelRequest(req)
 			result <- nil
 			return
 		case r := <-c:
-			// log.Println("Client finished", r)
+			log.Debugf("Got content from %s", u.Host)
 			result <- r
 			return
 		}
