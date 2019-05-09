@@ -74,7 +74,7 @@ func main() {
 	} else {
 		log.SetLevel("info")
 	}
-	log.Debug("debug mode: %+v", debug)
+	log.Debugf("debug mode: %+v", debug)
 
 	checkGateways()
 	go func() {
