@@ -4,12 +4,60 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	log "github.com/schollz/logger"
+)
+
+var gateways = []string{
+	"https://ipfs.io/ipfs/",
+	"https://gateway.ipfs.io/ipfs/",
+	"https://ipfs.infura.io/ipfs/",
+	"https://rx14.co.uk/ipfs/",
+	"https://ninetailed.ninja/ipfs/",
+	"https://upload.global/ipfs/",
+	"https://ipfs.globalupload.io/ipfs/",
+	"https://ipfs.jes.xxx/ipfs/",
+	"https://catalunya.network/ipfs/",
+	"https://siderus.io/ipfs/",
+	"https://eu.siderus.io/ipfs/",
+	"https://na.siderus.io/ipfs/",
+	"https://ap.siderus.io/ipfs/",
+	"https://ipfs.eternum.io/ipfs/",
+	"https://hardbin.com/ipfs/",
+	"https://ipfs.macholibre.org/ipfs/",
+	"https://ipfs.works/ipfs/",
+	"https://ipfs.wa.hle.rs/ipfs/",
+	"https://api.wisdom.sh/ipfs/",
+	"https://gateway.blocksec.com/ipfs/",
+	"https://ipfs.renehsz.com/ipfs/",
+	"https://cloudflare-ipfs.com/ipfs/",
+	"https://ipns.co/",
+	"https://ipfs.netw0rk.io/ipfs/",
+	"https://gateway.swedneck.xyz/ipfs/",
+	"https://ipfs.mrh.io/ipfs/",
+	"https://gateway.originprotocol.com/ipfs/",
+	"https://ipfs.dapps.earth/ipfs/",
+	"https://gateway.pinata.cloud/ipfs/",
+	"https://ipfs.doolta.com/ipfs/",
+	"https://ipfs.sloppyta.co/ipfs/",
+	"https://ipfs.busy.org/ipfs/",
+	"https://ipfs.greyh.at/ipfs/",
+	"https://gateway.serph.network/ipfs/",
+	"https://jorropo.ovh/ipfs/",
+	"https://gateway.temporal.cloud/ipfs/",
+	"https://ipfs.fooock.com/ipfs/",
+	"https://ipfstube.erindachtler.me/ipfs/",
+	"https://cdn.cwinfo.net/ipfs/",
+}
+
+const (
+	checkHash   = "Qmaisz6NMhDB51cCvNWa1GMS7LU1pAxdF4Ld6Ft9kZEP2a"
+	checkString = "Hello from IPFS Gateway Checker\n"
 )
 
 func main() {
@@ -26,6 +74,13 @@ func main() {
 		log.SetLevel("info")
 	}
 
+	checkGateways()
+	go func() {
+		// check gateways every hour
+		time.Sleep(60 * time.Minute)
+		checkGateways()
+	}()
+
 	log.Info("running on :" + port)
 	http.HandleFunc("/ipfs/", handler)
 	err := http.ListenAndServe(":"+port, nil)
@@ -34,21 +89,62 @@ func main() {
 	}
 }
 
-var gateways = []string{
-	"https://ipfs.io/ipfs/",
-	"https://gateway.ipfs.io/ipfs/",
-	"https://ipfs.infura.io/ipfs/",
-	"https://xmine128.tk/ipfs/",
-	"https://ipfs.jes.xxx/ipfs/",
-	"https://siderus.io/ipfs/",
-	"https://www.eternum.io/ipfs/",
-	"https://hardbin.com/ipfs/",
-	"https://ipfs.wa.hle.rs/ipfs/",
-	"https://ipfs.renehsz.com/ipfs/",
-	"https://cloudflare-ipfs.com/ipfs/",
-	"https://ipfs.netw0rk.io/ipfs/",
-	"https://gateway.swedneck.xyz/ipfs/",
-	"https://ipfs.infura.io/ipfs/",
+func checkGateways() {
+	jobs := make(chan string, len(gateways))
+	type result struct {
+		err     error
+		gateway string
+	}
+	results := make(chan result, len(gateways))
+
+	for w := 0; w < 8; w++ {
+		go func(jobs <-chan string, results chan<- result) {
+			for j := range jobs {
+				results <- result{checkGateway(j), j}
+			}
+		}(jobs, results)
+	}
+
+	for _, gateway := range gateways {
+		jobs <- gateway
+	}
+	close(jobs)
+	newgateways := []string{}
+	for i := 0; i < len(gateways); i++ {
+		r := <-results
+		if r.err != nil {
+			log.Infof("%s ❌", r.gateway)
+		} else {
+			log.Infof("%s ✔️", r.gateway)
+			newgateways = append(newgateways, r.gateway)
+		}
+	}
+	gateways = newgateways
+	log.Infof("found %d functional gateways", len(gateways))
+}
+
+func checkGateway(gateway string) (err error) {
+	client := http.Client{
+		Timeout: time.Duration(5 * time.Second),
+	}
+	resp, err := client.Get(gateway + checkHash)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad response code: %d", resp.StatusCode)
+	}
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	bodyString := string(bodyBytes)
+	if bodyString != checkString {
+		err = fmt.Errorf("'%s' != '%s'", checkString, bodyString)
+	}
+	return
 }
 
 func copyHeader(dst, src http.Header) {
@@ -69,6 +165,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handle(w http.ResponseWriter, r *http.Request) (err error) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if len(r.URL.Path[1:]) < 10 {
 		fmt.Fprintf(w, "bad ipfs hash: "+r.URL.Path[1:])
 		return

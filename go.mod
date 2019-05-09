@@ -1,4 +1,4 @@
-module github.com/schollz/super-ipfs-gateway
+module github.com/schollz/ipfs-multigateway
 
 go 1.12
 
