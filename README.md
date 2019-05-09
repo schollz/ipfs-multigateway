@@ -3,7 +3,7 @@
 
 <img src="https://img.shields.io/badge/coverage-78%25-brightgreen.svg?style=flat-square" alt="Code coverage">&nbsp;<a href="https://travis-ci.org/schollz/ipfs-multigateway"><img src="https://img.shields.io/travis/schollz/ipfs-multigateway.svg?style=flat-square" alt="Build Status"></a>
 
-This enables a local server that will request a single hash from as many IPFS Gateways as possible, returning the first result found and canceling all the other requests before they finish.
+This enables a local server that will request a single hash from as many IPFS Gateways as possible, returning the first result found and canceling all the other requests before they finish. This way you can request `/ipfs/<hash>` as fast as possible.
 
 ## Install
 
