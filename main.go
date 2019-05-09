@@ -11,6 +11,7 @@ import (
 	"time"
 
 	log "github.com/schollz/logger"
+	"github.com/schollz/progressbar/v2"
 )
 
 var gateways = []string{
@@ -64,7 +65,7 @@ func main() {
 	var port string
 	var debug bool
 	flag.StringVar(&port, "port", "8085", "port to host on")
-	flag.BoolVar(&debug, "debug", true, "debug mode")
+	flag.BoolVar(&debug, "debug", false, "debug mode")
 	flag.Parse()
 
 	// toggle debug mode
@@ -73,6 +74,7 @@ func main() {
 	} else {
 		log.SetLevel("info")
 	}
+	log.Debug("debug mode: %+v", debug)
 
 	checkGateways()
 	go func() {
@@ -97,7 +99,7 @@ func checkGateways() {
 	}
 	results := make(chan result, len(gateways))
 
-	for w := 0; w < 8; w++ {
+	for w := 0; w < len(gateways); w++ {
 		go func(jobs <-chan string, results chan<- result) {
 			for j := range jobs {
 				results <- result{checkGateway(j), j}
@@ -110,12 +112,19 @@ func checkGateways() {
 	}
 	close(jobs)
 	newgateways := []string{}
+	log.Infof("checking gateways...")
+	bar := progressbar.NewOptions(len(gateways),
+		progressbar.OptionShowCount(),
+		progressbar.OptionShowIts(),
+		progressbar.OptionClearOnFinish(),
+	)
 	for i := 0; i < len(gateways); i++ {
+		bar.Add(1)
 		r := <-results
 		if r.err != nil {
-			log.Infof("%s ❌", r.gateway)
+			log.Debugf("%s ❌", r.gateway)
 		} else {
-			log.Infof("%s ✔️", r.gateway)
+			log.Debugf("%s ✔️", r.gateway)
 			newgateways = append(newgateways, r.gateway)
 		}
 	}
