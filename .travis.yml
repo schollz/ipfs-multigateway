@@ -1,1 +1,9 @@
 language: go
+
+go:
+  - tip
+
+env:
+  - "PATH=/home/travis/gopath/bin:$PATH"
+
+install: true
