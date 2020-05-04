@@ -185,7 +185,7 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 	result := make(chan *http.Response)
 
 	for _, gateway := range gateways {
-		go cancelableRequest(result, cancel, strings.Replace(gateway, ":hash", ipfsContentHash, 1))
+		go cancelableRequest(result, cancel, strings.Replace(gateway, ":hash", ipfsContentHash, 1), r.Header)
 	}
 
 	for i := 0; i < len(gateways); i++ {
@@ -220,12 +220,17 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 	return nil
 }
 
-func cancelableRequest(result chan *http.Response, cancel chan struct{}, urlToGet string) {
+func cancelableRequest(result chan *http.Response, cancel chan struct{}, urlToGet string, requestHeader http.Header) {
 	u, err := url.Parse(urlToGet)
 	if err != nil {
 		panic(err)
 	}
 	req, _ := http.NewRequest("GET", urlToGet, nil)
+	for k := range requestHeader {
+		for _, v := range requestHeader[k] {
+			req.Header.Add(k, v)
+		}
+	}
 	tr := &http.Transport{} // TODO: copy defaults from http.DefaultTransport
 	client := &http.Client{
 		Transport: tr,
