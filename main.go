@@ -11,7 +11,6 @@ import (
 	"time"
 
 	log "github.com/schollz/logger"
-	"github.com/schollz/progressbar/v2"
 )
 
 var gateways = []string{
@@ -105,18 +104,12 @@ func checkGateways() {
 	close(jobs)
 	newgateways := []string{}
 	log.Infof("checking gateways...")
-	bar := progressbar.NewOptions(len(gateways),
-		progressbar.OptionShowCount(),
-		progressbar.OptionShowIts(),
-		progressbar.OptionClearOnFinish(),
-	)
 	for i := 0; i < len(gateways); i++ {
-		bar.Add(1)
 		r := <-results
 		if r.err != nil {
-			log.Debugf("%s ❌", r.gateway)
+			log.Infof("%s ❌", r.gateway)
 		} else {
-			log.Debugf("%s ✔️", r.gateway)
+			log.Infof("%s ✔️", r.gateway)
 			newgateways = append(newgateways, r.gateway)
 		}
 	}
@@ -185,10 +178,10 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 		if res == nil {
 			continue
 		}
-		// log.Println(res)
-		if res.StatusCode != http.StatusOK && res.Body != nil {
-			continue
-		}
+		log.Debugf("res.StatusCod: %+v", res.StatusCode)
+		// if res.StatusCode != http.StatusOK && res.Body != nil {
+		// 	continue
+		// }
 		log.Debugf("%s", res.Request.URL.String())
 
 		go func() {
