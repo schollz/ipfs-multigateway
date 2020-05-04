@@ -15,45 +15,41 @@ import (
 )
 
 var gateways = []string{
-	"https://ipfs.io/ipfs/",
-	"https://gateway.ipfs.io/ipfs/",
-	"https://ipfs.infura.io/ipfs/",
-	"https://rx14.co.uk/ipfs/",
-	"https://ninetailed.ninja/ipfs/",
-	"https://upload.global/ipfs/",
-	"https://ipfs.globalupload.io/ipfs/",
-	"https://ipfs.jes.xxx/ipfs/",
-	"https://catalunya.network/ipfs/",
-	"https://siderus.io/ipfs/",
-	"https://eu.siderus.io/ipfs/",
-	"https://na.siderus.io/ipfs/",
-	"https://ap.siderus.io/ipfs/",
-	"https://ipfs.eternum.io/ipfs/",
-	"https://hardbin.com/ipfs/",
-	"https://ipfs.macholibre.org/ipfs/",
-	"https://ipfs.works/ipfs/",
-	"https://ipfs.wa.hle.rs/ipfs/",
-	"https://api.wisdom.sh/ipfs/",
-	"https://gateway.blocksec.com/ipfs/",
-	"https://ipfs.renehsz.com/ipfs/",
-	"https://cloudflare-ipfs.com/ipfs/",
-	"https://ipns.co/",
-	"https://ipfs.netw0rk.io/ipfs/",
-	"https://gateway.swedneck.xyz/ipfs/",
-	"https://ipfs.mrh.io/ipfs/",
-	"https://gateway.originprotocol.com/ipfs/",
-	"https://ipfs.dapps.earth/ipfs/",
-	"https://gateway.pinata.cloud/ipfs/",
-	"https://ipfs.doolta.com/ipfs/",
-	"https://ipfs.sloppyta.co/ipfs/",
-	"https://ipfs.busy.org/ipfs/",
-	"https://ipfs.greyh.at/ipfs/",
-	"https://gateway.serph.network/ipfs/",
-	"https://jorropo.ovh/ipfs/",
-	"https://gateway.temporal.cloud/ipfs/",
-	"https://ipfs.fooock.com/ipfs/",
-	"https://ipfstube.erindachtler.me/ipfs/",
-	"https://cdn.cwinfo.net/ipfs/",
+	"https://ipfs.io/ipfs/:hash",
+	"https://:hash.ipfs.dweb.link",
+	"https://gateway.ipfs.io/ipfs/:hash",
+	"https://ipfs.infura.io/ipfs/:hash",
+	"https://ninetailed.ninja/ipfs/:hash",
+	"https://ipfs.globalupload.io/:hash",
+	"https://10.via0.com/ipfs/:hash",
+	"https://ipfs.eternum.io/ipfs/:hash",
+	"https://hardbin.com/ipfs/:hash",
+	"https://gateway.blocksec.com/ipfs/:hash",
+	"https://cloudflare-ipfs.com/ipfs/:hash",
+	"https://:hash.ipfs.cf-ipfs.com",
+	"https://ipns.co/:hash",
+	"https://ipfs.mrh.io/ipfs/:hash",
+	"https://gateway.originprotocol.com/ipfs/:hash",
+	"https://gateway.pinata.cloud/ipfs/:hash",
+	"https://ipfs.doolta.com/ipfs/:hash",
+	"https://ipfs.sloppyta.co/ipfs/:hash",
+	"https://ipfs.busy.org/ipfs/:hash",
+	"https://ipfs.greyh.at/ipfs/:hash",
+	"https://gateway.serph.network/ipfs/:hash",
+	"https://jorropo.ovh/ipfs/:hash",
+	"https://gateway.temporal.cloud/ipfs/:hash",
+	"https://ipfs.fooock.com/ipfs/:hash",
+	"https://cdn.cwinfo.net/ipfs/:hash",
+	"https://ipfs.privacytools.io/ipfs/:hash",
+	"https://ipfs.jeroendeneef.com/ipfs/:hash",
+	"https://permaweb.io/ipfs/:hash",
+	"https://ipfs.stibarc.com/ipfs/:hash",
+	"https://ipfs.best-practice.se/ipfs/:hash",
+	"https://:hash.ipfs.2read.net",
+	"https://ipfs.2read.net/ipfs/:hash",
+	"https://storjipfs-gateway.com/ipfs/:hash",
+	"https://ipfs.runfission.com/ipfs/:hash",
+	"https://trusti.id/ipfs/:hash",
 }
 
 const (
@@ -136,7 +132,7 @@ func checkGateway(gateway string) (err error) {
 	client := http.Client{
 		Timeout: time.Duration(5 * time.Second),
 	}
-	resp, err := client.Get(gateway + checkHash)
+	resp, err := client.Get(strings.Replace(gateway, ":hash", checkHash, 1))
 	if err != nil {
 		return
 	}
@@ -189,7 +185,7 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 	result := make(chan *http.Response)
 
 	for _, gateway := range gateways {
-		go cancelableRequest(result, cancel, gateway+ipfsContentHash)
+		go cancelableRequest(result, cancel, strings.Replace(gateway, ":hash", ipfsContentHash, 1))
 	}
 
 	for i := 0; i < len(gateways); i++ {
