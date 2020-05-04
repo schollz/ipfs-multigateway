@@ -16,17 +16,14 @@ import (
 
 var gateways = []string{
 	"https://ipfs.io/ipfs/:hash",
-	"https://:hash.ipfs.dweb.link",
 	"https://gateway.ipfs.io/ipfs/:hash",
 	"https://ipfs.infura.io/ipfs/:hash",
 	"https://ninetailed.ninja/ipfs/:hash",
 	"https://ipfs.globalupload.io/:hash",
-	"https://10.via0.com/ipfs/:hash",
 	"https://ipfs.eternum.io/ipfs/:hash",
 	"https://hardbin.com/ipfs/:hash",
 	"https://gateway.blocksec.com/ipfs/:hash",
 	"https://cloudflare-ipfs.com/ipfs/:hash",
-	"https://:hash.ipfs.cf-ipfs.com",
 	"https://ipns.co/:hash",
 	"https://ipfs.mrh.io/ipfs/:hash",
 	"https://gateway.originprotocol.com/ipfs/:hash",
@@ -45,7 +42,6 @@ var gateways = []string{
 	"https://permaweb.io/ipfs/:hash",
 	"https://ipfs.stibarc.com/ipfs/:hash",
 	"https://ipfs.best-practice.se/ipfs/:hash",
-	"https://:hash.ipfs.2read.net",
 	"https://ipfs.2read.net/ipfs/:hash",
 	"https://storjipfs-gateway.com/ipfs/:hash",
 	"https://ipfs.runfission.com/ipfs/:hash",
@@ -153,11 +149,7 @@ func checkGateway(gateway string) (err error) {
 }
 
 func copyHeader(dst, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
-	}
+
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -181,8 +173,8 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 		return nil
 	}
 
-	cancel := make(chan struct{})
-	result := make(chan *http.Response)
+	cancel := make(chan struct{}, len(gateways))
+	result := make(chan *http.Response, len(gateways))
 
 	for _, gateway := range gateways {
 		go cancelableRequest(result, cancel, strings.Replace(gateway, ":hash", ipfsContentHash, 1), r.Header)
@@ -199,10 +191,6 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 		}
 		log.Debugf("%s", res.Request.URL.String())
 
-		copyHeader(w.Header(), res.Header)
-		io.Copy(w, res.Body)
-		res.Body.Close()
-
 		go func() {
 			// cancel other requests
 			for j := i + 1; j < len(gateways); j++ {
@@ -215,6 +203,15 @@ func handle(w http.ResponseWriter, r *http.Request) (err error) {
 			close(result)
 			close(cancel)
 		}()
+
+		for k, vv := range res.Header {
+			for _, v := range vv {
+				w.Header().Add(k, v)
+			}
+		}
+		io.Copy(w, res.Body)
+		res.Body.Close()
+
 		break
 	}
 	return nil
@@ -242,17 +239,15 @@ func cancelableRequest(result chan *http.Response, cancel chan struct{}, urlToGe
 		c <- resp
 	}()
 
-	for {
-		select {
-		case <-cancel:
-			log.Debugf("Cancelling request for %s", u.Host)
-			tr.CancelRequest(req)
-			result <- nil
-			return
-		case r := <-c:
-			log.Debugf("Got content from %s", u.Host)
-			result <- r
-			return
-		}
+	select {
+	case <-cancel:
+		log.Debugf("Cancelling request for %s", u.Host)
+		tr.CancelRequest(req)
+		result <- nil
+		return
+	case r := <-c:
+		log.Debugf("Got content from %s", u.Host)
+		result <- r
+		return
 	}
 }
