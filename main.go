@@ -229,7 +229,9 @@ func cancelableRequest(result chan *http.Response, cancel chan struct{}, urlToGe
 	c := make(chan *http.Response, 1)
 	go func() {
 		resp, _ := client.Do(req)
-		c <- resp
+		if resp.StatusCode == 200 {
+			c <- resp
+		}
 	}()
 
 	select {
